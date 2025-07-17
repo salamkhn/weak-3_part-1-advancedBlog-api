@@ -1,8 +1,24 @@
 import bcryptjs from "bcryptjs";
 import { user } from "../models/userModel.js";
+import Joi from "joi";
+import jwt from "jsonwebtoken";
 
+//validation with joi
+const userSchema = Joi.object({
+  firstName: Joi.string().required(),
+  lastName: Joi.string().allow(""),
+  Email: Joi.string().email().required(),
+  password: Joi.string().min(6).required(),
+});
 //userRegister
 export const userRegister = async (req, res) => {
+  const { error } = userSchema.validate(req.body);
+
+  if (error) {
+    return res.status(400).json({
+      message: error.details[0].message,
+    });
+  }
   try {
     const { firstName, lastName, Email, password } = req.body;
 
@@ -44,11 +60,7 @@ export const userRegister = async (req, res) => {
       userData,
     });
   } catch (err) {
-    return res.status(500).json({
-      message: "internal server error (userRegistration)",
-      success: false,
-      error: err.message,
-    });
+    next(err);
   }
 };
 
@@ -60,21 +72,26 @@ export const userLogin = async (req, res) => {
 
     //validation
     if (!Email) {
-      if (!password) {
+      if (!password)
         return res.status(400).json({
           message: "invalid login details",
           success: false,
         });
-      }
     }
 
     const Existuser = await user.findOne({ Email });
 
-  
+    //password encryption
+    const encodePassword = await bcryptjs.compare(password, Existuser.password);
 
-    const encodePassword = bcryptjs.compare(password, Existuser.password);
+    //token generated
+    const token = jwt.sign({ userId: Existuser._id }, "YY)()(()", {
+      expiresIn: "1d",
+    });
 
-    if (Email !== Existuser.Email || encodePassword == false) {
+    console.log("token :", token);
+
+    if (encodePassword == false) {
       return res.status(400).json({
         message: "invalid login details",
         success: false,
@@ -86,12 +103,9 @@ export const userLogin = async (req, res) => {
       message: "login successfully ",
       succes: true,
       Existuser,
+      token,
     });
   } catch (err) {
-    return res.status(500).json({
-      message: "internal server error (userLogin)",
-      success: false,
-      error: err.message,
-    });
+    next(err);
   }
 };
