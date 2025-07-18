@@ -4,14 +4,15 @@ export const isAuthenticated = async (req, res, next) => {
 
   if (!token) {
     return res.status(400).json({
-      message: "token required",
+      message: "login first",
       success: false,
     });
   }
-  console.log("token in autn :", token);
 
+  console.log("token :", token);
   //veryfing token
-  const user = jwt.verify(token, "YY)()(()");
+  const user = jwt.verify(token, process.env.SECRETE_KEY);
+  console.log("user from auth :", user);
 
   req.user = user;
   next();

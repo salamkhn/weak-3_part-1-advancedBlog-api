@@ -11,7 +11,7 @@ const userSchema = Joi.object({
   password: Joi.string().min(6).required(),
 });
 //userRegister
-export const userRegister = async (req, res) => {
+export const userRegister = async (req, res, next) => {
   const { error } = userSchema.validate(req.body);
 
   if (error) {
@@ -51,7 +51,7 @@ export const userRegister = async (req, res) => {
     });
 
     //save to dbs
-    userData.save();
+    await userData.save();
 
     //success response
     return res.status(201).json({
@@ -65,14 +65,13 @@ export const userRegister = async (req, res) => {
 };
 
 //userLogin
-export const userLogin = async (req, res) => {
+export const userLogin = async (req, res, next) => {
   try {
     const { Email, password } = req.body;
-    console.log("req.body :", req.body);
 
     //validation
-    if (!Email) {
-      if (!password)
+    if (!Email || Email.length === 0) {
+      if (!password || password.length === 0)
         return res.status(400).json({
           message: "invalid login details",
           success: false,
@@ -80,13 +79,21 @@ export const userLogin = async (req, res) => {
     }
 
     const Existuser = await user.findOne({ Email });
+    if (!Existuser) {
+      return res.status(400).json({
+        message: "invalid login details",
+        succes: false,
+      });
+    }
+
+    console.log("Existuser", Existuser);
 
     //password encryption
     const encodePassword = await bcryptjs.compare(password, Existuser.password);
 
     //token generated
-    const token = jwt.sign({ userId: Existuser._id }, "YY)()(()", {
-      expiresIn: "1d",
+    const token = jwt.sign({ userId: Existuser._id }, process.env.SECRETE_KEY, {
+      expiresIn: "5m",
     });
 
     console.log("token :", token);
